@@ -53,6 +53,7 @@ and Inline : sig
     | Image of Attrs.t * Link.t
     | Html of Attrs.t * string
 end
+
 and Def_elt : sig
   type t =
     { term : Inline.t
@@ -75,7 +76,6 @@ and Link : sig
     ; title : string option
     }
 end
-
 
 module Document : sig
   type t = Block.t list
@@ -106,4 +106,5 @@ module Html : sig
 
   val of_document : Document.t -> t list
   val to_string : t list -> string
+  val map: t -> f:(t -> t) -> t
 end

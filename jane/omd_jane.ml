@@ -274,4 +274,12 @@ module Html = struct
 
   let of_document t = forward (Omd.Html.of_doc (Document.conv_backward t))
   let to_string t = t |> backward |> Omd.Html.to_string
+
+  let rec map t ~f =
+    f
+      (match t with
+      | Element { tag; attributes; children } ->
+          let children = List.map children ~f:(map ~f) in
+          Element { tag; attributes; children }
+      | other -> other)
 end
