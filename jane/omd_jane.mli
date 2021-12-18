@@ -16,9 +16,7 @@ module List_spacing : sig
     | Tight
 end
 
-module rec 
-
-Block : sig
+module rec Block : sig
   type t =
     | Paragraph of Attrs.t * Inline.t
     | List of
@@ -72,15 +70,12 @@ and Link : sig
     }
 end
 
-
 and Def_elt : sig
   type t =
     { term : Inline.t
     ; defs : Inline.t list
     }
 end
-
-
 
 module Document : sig
   type t = Block.t list
