@@ -1,6 +1,6 @@
 (library
  (name omd_jane_test)
  (inline_tests)
- (libraries base omd_jane)
+ (libraries base lambdasoup omd_jane)
  (preprocess
   (pps ppx_jane)))

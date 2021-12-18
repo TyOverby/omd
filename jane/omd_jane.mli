@@ -71,21 +71,26 @@ and Block : sig
         ; content : string
         }
     | Html_block of
-        { tag : string
-        ; attrs : Attrs.t
-        ; content : t list
+        { attrs : Attrs.t
         ; content_raw : string
         }
     | Definition_list of Attrs.t * Def_elt.t list
 end
 
 module Document : sig
-  type t = Block.t list [@@deriving sexp_of]
+  type t = Block.t list
 
+  val sexp_of_t : t -> Sexp.t
   val of_string : string -> t
   val from_in_channel : Stdlib.in_channel -> t
   val table_of_contents : ?start:int list -> ?depth:int -> t -> t
   val headers : ?remove_links:bool -> t -> Heading.t list
+
+  val map :
+       ?map_inline:(Inline.t -> Inline.t)
+    -> ?map_block:(Block.t -> Block.t)
+    -> t
+    -> t
 end
 
 module Html : sig
@@ -100,5 +105,5 @@ module Html : sig
   [@@deriving sexp]
 
   val of_document : Document.t -> t list
-  val to_string : ?pretty:bool -> t list -> string
+  val to_string : t list -> string
 end

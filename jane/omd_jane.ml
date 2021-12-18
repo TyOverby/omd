@@ -1,5 +1,4 @@
 open! Base
-module Ls = Soup
 
 module Attrs = struct
   type t = (string * string) list [@@deriving sexp]
@@ -76,116 +75,125 @@ and Block : sig
         ; content : string
         }
     | Html_block of
-        { tag : string
-        ; attrs : Attrs.t
-        ; content : t list
+        { attrs : Attrs.t
         ; content_raw : string
         }
     | Definition_list of Attrs.t * Def_elt.t list
 end =
   Block
 
-let rec parse_string_html s =
-  match Ls.child_element (Ls.parse s) with
-  | None -> assert false
-  | Some element ->
-      let tag = Ls.name element in
-      let attrs =
-        Ls.fold_attributes (fun acc key value -> (key, value) :: acc) [] element
-      in
-      let content =
-        element
-        |> Ls.children
-        |> Ls.to_list
-        |> List.map ~f:Ls.to_string
-        |> String.concat ~sep:"\n"
-        |> parse_doc
-      in
-      Block.Html_block { tag; attrs; content; content_raw = s }
+module Conversions = struct
+  let rec link_forward : Attrs.t Omd.link -> Link.t =
+   fun { label; destination; title } ->
+    let label = inline_forward label in
+    { label; destination; title }
 
-and link_forward : Attrs.t Omd.link -> Link.t =
- fun { label; destination; title } ->
-  let label = inline_forward label in
-  { label; destination; title }
+  and inline_forward : Attrs.t Omd.inline -> Inline.t = function
+    | Concat (attrs, inlines) ->
+        Concat (attrs, List.map inlines ~f:inline_forward)
+    | Text (attrs, text) -> Text (attrs, text)
+    | Emph (attrs, t) -> Emph (attrs, inline_forward t)
+    | Strong (attrs, t) -> Strong (attrs, inline_forward t)
+    | Code (attrs, string) -> Code (attrs, string)
+    | Hard_break attrs -> Hard_break attrs
+    | Soft_break attrs -> Soft_break attrs
+    | Link (attrs, link) -> Link (attrs, link_forward link)
+    | Image (attrs, link) -> Image (attrs, link_forward link)
+    | Html (attrs, string) -> Html (attrs, string)
 
-and inline_forward : Attrs.t Omd.inline -> Inline.t = function
-  | Concat (attrs, inlines) -> Concat (attrs, List.map inlines ~f:inline_forward)
-  | Text (attrs, text) -> Text (attrs, text)
-  | Emph (attrs, t) -> Emph (attrs, inline_forward t)
-  | Strong (attrs, t) -> Strong (attrs, inline_forward t)
-  | Code (attrs, string) -> Code (attrs, string)
-  | Hard_break attrs -> Hard_break attrs
-  | Soft_break attrs -> Soft_break attrs
-  | Link (attrs, link) -> Link (attrs, link_forward link)
-  | Image (attrs, link) -> Image (attrs, link_forward link)
-  | Html (attrs, string) -> Html (attrs, string)
+  and def_elt_forward : Attrs.t Omd.def_elt -> Def_elt.t =
+   fun { term; defs } ->
+    { term = inline_forward term; defs = List.map defs ~f:inline_forward }
 
-and def_elt_forward : Attrs.t Omd.def_elt -> Def_elt.t =
- fun { term; defs } ->
-  { term = inline_forward term; defs = List.map defs ~f:inline_forward }
+  and block_forward : Attrs.t Omd.block -> Block.t = function
+    | Paragraph (attrs, inline) -> Paragraph (attrs, inline_forward inline)
+    | List (attrs, kind, spacing, blocks) ->
+        let blocks = List.map blocks ~f:(List.map ~f:block_forward) in
+        List { attrs; kind; spacing; blocks }
+    | Blockquote (attrs, blocks) ->
+        let blocks = List.map blocks ~f:block_forward in
+        Blockquote (attrs, blocks)
+    | Thematic_break attrs -> Thematic_break attrs
+    | Heading (attrs, level, content) ->
+        let content = inline_forward content in
+        Heading { attrs; level; content }
+    | Code_block (attrs, language, content) ->
+        Code_block { attrs; language; content }
+    | Html_block (attrs, content_raw) -> Html_block { attrs; content_raw }
+    | Definition_list (attrs, defs) ->
+        let defs = List.map defs ~f:def_elt_forward in
+        Definition_list (attrs, defs)
 
-and block_forward : Attrs.t Omd.block -> Block.t = function
-  | Paragraph (attrs, inline) -> Paragraph (attrs, inline_forward inline)
-  | List (attrs, kind, spacing, blocks) ->
-      let blocks = List.map blocks ~f:(List.map ~f:block_forward) in
-      List { attrs; kind; spacing; blocks }
-  | Blockquote (attrs, blocks) ->
-      let blocks = List.map blocks ~f:block_forward in
-      Blockquote (attrs, blocks)
-  | Thematic_break attrs -> Thematic_break attrs
-  | Heading (attrs, level, content) ->
-      let content = inline_forward content in
-      Heading { attrs; level; content }
-  | Code_block (attrs, language, content) ->
-      Code_block { attrs; language; content }
-  | Html_block (_, content) -> parse_string_html content
-  | Definition_list (attrs, defs) ->
-      let defs = List.map defs ~f:def_elt_forward in
-      Definition_list (attrs, defs)
+  let rec link_backward : Link.t -> Attrs.t Omd.link =
+   fun { label; destination; title } ->
+    let label = inline_backward label in
+    { label; destination; title }
 
-and conv_forward t = List.map t ~f:block_forward
-and parse_doc s = conv_forward (Omd.of_string s)
+  and inline_backward : Inline.t -> Attrs.t Omd.inline = function
+    | Concat (attrs, inlines) ->
+        Concat (attrs, List.map inlines ~f:inline_backward)
+    | Text (attrs, text) -> Text (attrs, text)
+    | Emph (attrs, t) -> Emph (attrs, inline_backward t)
+    | Strong (attrs, t) -> Strong (attrs, inline_backward t)
+    | Code (attrs, string) -> Code (attrs, string)
+    | Hard_break attrs -> Hard_break attrs
+    | Soft_break attrs -> Soft_break attrs
+    | Link (attrs, link) -> Link (attrs, link_backward link)
+    | Image (attrs, link) -> Image (attrs, link_backward link)
+    | Html (attrs, string) -> Html (attrs, string)
 
-let rec link_backward : Link.t -> Attrs.t Omd.link =
- fun { label; destination; title } ->
-  let label = inline_backward label in
-  { label; destination; title }
+  and def_elt_backward : Def_elt.t -> Attrs.t Omd.def_elt =
+   fun { term; defs } ->
+    { term = inline_backward term; defs = List.map defs ~f:inline_backward }
 
-and inline_backward : Inline.t -> Attrs.t Omd.inline = function
-  | Concat (attrs, inlines) ->
-      Concat (attrs, List.map inlines ~f:inline_backward)
-  | Text (attrs, text) -> Text (attrs, text)
-  | Emph (attrs, t) -> Emph (attrs, inline_backward t)
-  | Strong (attrs, t) -> Strong (attrs, inline_backward t)
-  | Code (attrs, string) -> Code (attrs, string)
-  | Hard_break attrs -> Hard_break attrs
-  | Soft_break attrs -> Soft_break attrs
-  | Link (attrs, link) -> Link (attrs, link_backward link)
-  | Image (attrs, link) -> Image (attrs, link_backward link)
-  | Html (attrs, string) -> Html (attrs, string)
+  and block_backward : Block.t -> Attrs.t Omd.block = function
+    | Paragraph (attrs, inline) -> Paragraph (attrs, inline_backward inline)
+    | List { attrs; kind; spacing; blocks } ->
+        let blocks = List.map blocks ~f:(List.map ~f:block_backward) in
+        List (attrs, kind, spacing, blocks)
+    | Blockquote (attrs, blocks) ->
+        let blocks = List.map blocks ~f:block_backward in
+        Blockquote (attrs, blocks)
+    | Thematic_break attrs -> Thematic_break attrs
+    | Heading { attrs; level; content } ->
+        let content = inline_backward content in
+        Heading (attrs, level, content)
+    | Code_block { attrs; language; content } ->
+        Code_block (attrs, language, content)
+    | Html_block { content_raw; _ } -> Html_block ([], content_raw)
+    | Definition_list (attrs, defs) ->
+        let defs = List.map defs ~f:def_elt_backward in
+        Definition_list (attrs, defs)
+end
 
-and def_elt_backward : Def_elt.t -> Attrs.t Omd.def_elt =
- fun { term; defs } ->
-  { term = inline_backward term; defs = List.map defs ~f:inline_backward }
+module Mappers = struct
+  let map ?(map_inline = Fn.id) ?(map_block = Fn.id) doc =
+    let user_map_inline = map_inline in
+    let user_map_block = map_block in
+    let rec map_inline (i : Inline.t) : Inline.t =
+      user_map_inline
+        (match i with
+        | Concat (attrs, xs) -> Inline.Concat (attrs, List.map xs ~f:map_inline)
+        | Emph (attrs, t) -> Emph (attrs, map_inline t)
+        | Strong (attrs, t) -> Strong (attrs, map_inline t)
+        | other -> other)
+    in
+    let rec map_block (b : Block.t) : Block.t =
+      user_map_block
+        (match b with
+        | Paragraph (attrs, inline) -> Block.Paragraph (attrs, map_inline inline)
+        | List { attrs; kind; spacing; blocks } ->
+            let blocks = List.map blocks ~f:(List.map ~f:map_block) in
+            List { attrs; kind; spacing; blocks }
+        | Blockquote (attrs, blocks) ->
+            let blocks = List.map blocks ~f:map_block in
+            Blockquote (attrs, blocks)
+        | other -> other)
+    in
+    doc |> List.map ~f:map_block
+end
 
-and block_backward : Block.t -> Attrs.t Omd.block = function
-  | Paragraph (attrs, inline) -> Paragraph (attrs, inline_backward inline)
-  | List { attrs; kind; spacing; blocks } ->
-      let blocks = List.map blocks ~f:(List.map ~f:block_backward) in
-      List (attrs, kind, spacing, blocks)
-  | Blockquote (attrs, blocks) ->
-      let blocks = List.map blocks ~f:block_backward in
-      Blockquote (attrs, blocks)
-  | Thematic_break attrs -> Thematic_break attrs
-  | Heading { attrs; level; content } ->
-      let content = inline_backward content in
-      Heading (attrs, level, content)
-  | Code_block { attrs; language; content } ->
-      Code_block (attrs, language, content)
-  | Html_block { content_raw; _ } -> Html_block ([], content_raw)
-  | Definition_list (attrs, defs) ->
-      let defs = List.map defs ~f:def_elt_backward in
-      Definition_list (attrs, defs)
+open Conversions
 
 module Document = struct
   type t = Block.t list
@@ -205,6 +213,8 @@ module Document = struct
     let headings = Omd.headers ?remove_links (conv_backward t) in
     List.map headings ~f:(fun (attrs, level, content) ->
         { Heading.attrs; level; content = inline_forward content })
+
+  let map = Mappers.map
 end
 
 module Html = struct
@@ -263,11 +273,5 @@ module Html = struct
         Concat (backward left, backward right)
 
   let of_document t = forward (Omd.Html.of_doc (Document.conv_backward t))
-
-  let to_string ?(pretty = false) t =
-    let s = t |> backward |> Omd.Html.to_string in
-    if pretty then
-      s |> Ls.parse |> Ls.pretty_print
-    else
-      s
+  let to_string t = t |> backward |> Omd.Html.to_string
 end

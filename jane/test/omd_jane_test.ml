@@ -7,7 +7,9 @@ let run_test s =
   Stdlib.print_endline "\n=== html ===";
   t
   |> Omd_jane.Html.of_document
-  |> Omd_jane.Html.to_string ~pretty:true
+  |> Omd_jane.Html.to_string
+  |> Soup.parse
+  |> Soup.pretty_print
   |> Stdlib.print_endline
 
 let%expect_test _ =
@@ -70,7 +72,8 @@ let%expect_test _ =
     </section> |}]
 
 let%expect_test _ =
-  run_test {| 
+  run_test
+    {| 
   - this
   - is
     - a 
