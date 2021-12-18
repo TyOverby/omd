@@ -16,16 +16,7 @@ module List_spacing = struct
     | Tight
 end
 
-module rec Link : sig
-  type t =
-    { label : Inline.t
-    ; destination : string
-    ; title : string option
-    }
-end =
-  Link
-
-and Inline : sig
+module Inline = struct
   type t =
     | Concat of Attrs.t * t list
     | Text of Attrs.t * string
@@ -34,39 +25,42 @@ and Inline : sig
     | Code of Attrs.t * string
     | Hard_break of Attrs.t
     | Soft_break of Attrs.t
-    | Link of Attrs.t * Link.t
-    | Image of Attrs.t * Link.t
+    | Link of Attrs.t * link
+    | Image of Attrs.t * link
     | Html of Attrs.t * string
-end =
-  Inline
 
-and Def_elt : sig
+  and link =
+    { label : t
+    ; destination : string
+    ; title : string option
+    }
+end
+
+module Def_elt = struct
   type t =
     { term : Inline.t
     ; defs : Inline.t list
     }
-end =
-  Def_elt
+end
 
-and Heading : sig
+module Heading = struct
   type t =
     { attrs : Attrs.t
     ; level : int
     ; content : Inline.t
     }
-end =
-  Heading
+end
 
-and Block : sig
+module Block = struct
   type t =
     | Paragraph of Attrs.t * Inline.t
     | List of
         { attrs : Attrs.t
         ; kind : List_type.t
         ; spacing : List_spacing.t
-        ; blocks : Block.t list list
+        ; blocks : t list list
         }
-    | Blockquote of Attrs.t * Block.t list
+    | Blockquote of Attrs.t * t list
     | Thematic_break of Attrs.t
     | Heading of Heading.t
     | Code_block of
@@ -79,11 +73,10 @@ and Block : sig
         ; content_raw : string
         }
     | Definition_list of Attrs.t * Def_elt.t list
-end =
-  Block
+end
 
 module Conversions = struct
-  let rec link_forward : Attrs.t Omd.link -> Link.t =
+  let rec link_forward : Attrs.t Omd.link -> Inline.link =
    fun { label; destination; title } ->
     let label = inline_forward label in
     { label; destination; title }
@@ -124,7 +117,7 @@ module Conversions = struct
         let defs = List.map defs ~f:def_elt_forward in
         Definition_list (attrs, defs)
 
-  let rec link_backward : Link.t -> Attrs.t Omd.link =
+  let rec link_backward : Inline.link -> Attrs.t Omd.link =
    fun { label; destination; title } ->
     let label = inline_backward label in
     { label; destination; title }

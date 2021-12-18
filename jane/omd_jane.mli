@@ -16,6 +16,41 @@ module List_spacing : sig
     | Tight
 end
 
+module Inline : sig
+  type t =
+    | Concat of Attrs.t * t list
+    | Text of Attrs.t * string
+    | Emph of Attrs.t * t
+    | Strong of Attrs.t * t
+    | Code of Attrs.t * string
+    | Hard_break of Attrs.t
+    | Soft_break of Attrs.t
+    | Link of Attrs.t * link
+    | Image of Attrs.t * link
+    | Html of Attrs.t * string
+
+  and link =
+    { label : t
+    ; destination : string
+    ; title : string option
+    }
+end
+
+module Def_elt : sig
+  type t =
+    { term : Inline.t
+    ; defs : Inline.t list
+    }
+end
+
+module Heading : sig
+  type t =
+    { attrs : Attrs.t
+    ; level : int
+    ; content : Inline.t
+    }
+end
+
 module rec Block : sig
   type t =
     | Paragraph of Attrs.t * Inline.t
@@ -38,43 +73,6 @@ module rec Block : sig
         ; content_raw : string
         }
     | Definition_list of Attrs.t * Def_elt.t list
-end
-
-and Inline : sig
-  type t =
-    | Concat of Attrs.t * t list
-    | Text of Attrs.t * string
-    | Emph of Attrs.t * t
-    | Strong of Attrs.t * t
-    | Code of Attrs.t * string
-    | Hard_break of Attrs.t
-    | Soft_break of Attrs.t
-    | Link of Attrs.t * Link.t
-    | Image of Attrs.t * Link.t
-    | Html of Attrs.t * string
-end
-
-and Def_elt : sig
-  type t =
-    { term : Inline.t
-    ; defs : Inline.t list
-    }
-end
-
-and Heading : sig
-  type t =
-    { attrs : Attrs.t
-    ; level : int
-    ; content : Inline.t
-    }
-end
-
-and Link : sig
-  type t =
-    { label : Inline.t
-    ; destination : string
-    ; title : string option
-    }
 end
 
 module Document : sig
@@ -103,8 +101,8 @@ module Html : sig
     | Text of string
     | Raw of string
   [@@deriving sexp]
-  val map: t -> f:(t -> t) -> t
 
+  val map : t -> f:(t -> t) -> t
   val of_document : Document.t -> t list
   val to_string : t list -> string
 end
