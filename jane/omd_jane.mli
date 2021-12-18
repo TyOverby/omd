@@ -103,8 +103,8 @@ module Html : sig
     | Text of string
     | Raw of string
   [@@deriving sexp]
+  val map: t -> f:(t -> t) -> t
 
   val of_document : Document.t -> t list
   val to_string : t list -> string
-  val map: t -> f:(t -> t) -> t
 end
