@@ -2,21 +2,21 @@
 
 type attributes = (string * string) list
 
-type list_type =
+type list_type = Ast.list_type =
   | Ordered of int * char
   | Bullet of char
 
-type list_spacing =
+type list_spacing = Ast.list_spacing =
   | Loose
   | Tight
 
-type 'attr link =
+type 'attr link = 'attr Ast.link =
   { label : 'attr inline
   ; destination : string
   ; title : string option
   }
 
-and 'attr inline =
+and 'attr inline = 'attr Ast.inline =
   | Concat of 'attr * 'attr inline list
   | Text of 'attr * string
   | Emph of 'attr * 'attr inline
@@ -28,12 +28,12 @@ and 'attr inline =
   | Image of 'attr * 'attr link
   | Html of 'attr * string
 
-type 'attr def_elt =
+type 'attr def_elt = 'attr Ast.def_elt = 
   { term : 'attr inline
   ; defs : 'attr inline list
   }
 
-type 'attr block =
+type 'attr block = 'attr Ast.block =
   | Paragraph of 'attr * 'attr inline
   | List of 'attr * list_type * list_spacing * 'attr block list list
   | Blockquote of 'attr * 'attr block list
@@ -58,3 +58,5 @@ val headers :
   ?remove_links:bool -> 'attr block list -> ('attr * int * 'attr inline) list
 
 val toc : ?start:int list -> ?depth:int -> doc -> doc
+
+module H: module type of Html

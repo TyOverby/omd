@@ -1,0 +1,6 @@
+(library
+ (name omd_jane)
+ (public_name omd.jane)
+ (libraries parsexp base omd lambdasoup)
+ (preprocess
+  (pps ppx_jane)))
