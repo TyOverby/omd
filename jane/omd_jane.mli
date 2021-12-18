@@ -53,6 +53,12 @@ and Inline : sig
     | Image of Attrs.t * Link.t
     | Html of Attrs.t * string
 end
+and Def_elt : sig
+  type t =
+    { term : Inline.t
+    ; defs : Inline.t list
+    }
+end
 
 and Heading : sig
   type t =
@@ -70,12 +76,6 @@ and Link : sig
     }
 end
 
-and Def_elt : sig
-  type t =
-    { term : Inline.t
-    ; defs : Inline.t list
-    }
-end
 
 module Document : sig
   type t = Block.t list
