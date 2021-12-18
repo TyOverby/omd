@@ -16,44 +16,9 @@ module List_spacing : sig
     | Tight
 end
 
-module rec Link : sig
-  type t =
-    { label : Inline.t
-    ; destination : string
-    ; title : string option
-    }
-end
+module rec 
 
-and Inline : sig
-  type t =
-    | Concat of Attrs.t * t list
-    | Text of Attrs.t * string
-    | Emph of Attrs.t * t
-    | Strong of Attrs.t * t
-    | Code of Attrs.t * string
-    | Hard_break of Attrs.t
-    | Soft_break of Attrs.t
-    | Link of Attrs.t * Link.t
-    | Image of Attrs.t * Link.t
-    | Html of Attrs.t * string
-end
-
-and Def_elt : sig
-  type t =
-    { term : Inline.t
-    ; defs : Inline.t list
-    }
-end
-
-and Heading : sig
-  type t =
-    { attrs : Attrs.t
-    ; level : int
-    ; content : Inline.t
-    }
-end
-
-and Block : sig
+Block : sig
   type t =
     | Paragraph of Attrs.t * Inline.t
     | List of
@@ -76,6 +41,46 @@ and Block : sig
         }
     | Definition_list of Attrs.t * Def_elt.t list
 end
+
+and Inline : sig
+  type t =
+    | Concat of Attrs.t * t list
+    | Text of Attrs.t * string
+    | Emph of Attrs.t * t
+    | Strong of Attrs.t * t
+    | Code of Attrs.t * string
+    | Hard_break of Attrs.t
+    | Soft_break of Attrs.t
+    | Link of Attrs.t * Link.t
+    | Image of Attrs.t * Link.t
+    | Html of Attrs.t * string
+end
+
+and Heading : sig
+  type t =
+    { attrs : Attrs.t
+    ; level : int
+    ; content : Inline.t
+    }
+end
+
+and Link : sig
+  type t =
+    { label : Inline.t
+    ; destination : string
+    ; title : string option
+    }
+end
+
+
+and Def_elt : sig
+  type t =
+    { term : Inline.t
+    ; defs : Inline.t list
+    }
+end
+
+
 
 module Document : sig
   type t = Block.t list
