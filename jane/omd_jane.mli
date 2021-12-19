@@ -96,17 +96,23 @@ module Document : sig
 end
 
 module Html : sig
-  type t =
-    | Element of
-        { tag : string
-        ; attributes : Attrs.t
-        ; children : t list
-        }
-    | Text of string
-    | Raw of string
-  [@@deriving sexp]
+  module Node : sig
+    type t =
+      | Element of
+          { tag : string
+          ; attributes : Attrs.t
+          ; children : t list
+          }
+      | Text of string
+      | Raw of string
+    [@@deriving sexp]
+  end
 
-  val map : t -> f:(t -> t) -> t
-  val of_document : Document.t -> t list
-  val to_string : t list -> string
+  type t
+
+  val of_document : Document.t -> t
+  val to_string : t -> string
+  val reveal : t -> Node.t list
+  val conceal : Node.t list -> t
+  val map : Node.t list -> f:(Node.t -> Node.t) -> Node.t list
 end

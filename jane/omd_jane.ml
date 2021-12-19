@@ -265,15 +265,21 @@ module Html = struct
     module Html = Omd.H
   end
 
-  type t =
-    | Element of
-        { tag : string
-        ; attributes : Attrs.t
-        ; children : t list
-        }
-    | Text of string
-    | Raw of string
-  [@@deriving sexp]
+  module Node = struct
+    type t =
+      | Element of
+          { tag : string
+          ; attributes : Attrs.t
+          ; children : t list
+          }
+      | Text of string
+      | Raw of string
+    [@@deriving sexp]
+  end
+
+  type t = Omd.Html.t
+
+  open Node
 
   let kind_of_tag : string -> Omd.Html.element_type = function
     | "a"
@@ -314,8 +320,10 @@ module Html = struct
         let left, right = List.split_n many (List.length many / 2) in
         Concat (backward left, backward right)
 
-  let of_document t = forward (Omd.Html.of_doc (Document.conv_backward t))
-  let to_string t = t |> backward |> Omd.Html.to_string
+  let of_document t = Omd.Html.of_doc (Document.conv_backward t)
+  let to_string t = t |> Omd.Html.to_string
+  let reveal = forward
+  let conceal = backward
 
   let rec map t ~f =
     f
@@ -324,4 +332,6 @@ module Html = struct
           let children = List.map children ~f:(map ~f) in
           Element { tag; attributes; children }
       | other -> other)
+
+  let map t ~f = List.map t ~f:(map ~f)
 end
