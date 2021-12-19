@@ -1,27 +1,28 @@
 open! Base
 
 module Attrs : sig
-  type t = (string * string) list
+  type t = (string * string) list [@@deriving sexp, equal, compare]
 end
 
 module List_type : sig
   type t =
     | Ordered of int * char
     | Bullet of char
+  [@@deriving sexp, equal, compare]
 end
 
 module List_spacing : sig
   type t =
     | Loose
     | Tight
+  [@@deriving sexp, equal, compare]
 end
 
 module Inline : sig
   type t =
-    | Concat of Attrs.t * t list
     | Text of Attrs.t * string
-    | Emph of Attrs.t * t
-    | Strong of Attrs.t * t
+    | Emph of Attrs.t * t list
+    | Strong of Attrs.t * t list
     | Code of Attrs.t * string
     | Hard_break of Attrs.t
     | Soft_break of Attrs.t
@@ -30,37 +31,40 @@ module Inline : sig
     | Html of Attrs.t * string
 
   and link =
-    { label : t
+    { label : t list
     ; destination : string
     ; title : string option
     }
+  [@@deriving sexp, equal, compare]
 end
 
 module Def_elt : sig
   type t =
-    { term : Inline.t
-    ; defs : Inline.t list
+    { term : Inline.t list
+    ; defs : Inline.t list list
     }
+  [@@deriving sexp, equal, compare]
 end
 
 module Heading : sig
   type t =
     { attrs : Attrs.t
     ; level : int
-    ; content : Inline.t
+    ; content : Inline.t list
     }
+  [@@deriving sexp, equal, compare]
 end
 
-module rec Block : sig
+module Block : sig
   type t =
-    | Paragraph of Attrs.t * Inline.t
+    | Paragraph of Attrs.t * Inline.t list
     | List of
         { attrs : Attrs.t
         ; kind : List_type.t
         ; spacing : List_spacing.t
-        ; blocks : Block.t list list
+        ; blocks : t list list
         }
-    | Blockquote of Attrs.t * Block.t list
+    | Blockquote of Attrs.t * t list
     | Thematic_break of Attrs.t
     | Heading of Heading.t
     | Code_block of
@@ -73,12 +77,12 @@ module rec Block : sig
         ; content_raw : string
         }
     | Definition_list of Attrs.t * Def_elt.t list
+  [@@deriving sexp, equal, compare]
 end
 
 module Document : sig
-  type t = Block.t list
+  type t = Block.t list [@@deriving sexp, equal, compare]
 
-  val sexp_of_t : t -> Sexp.t
   val of_string : string -> t
   val from_in_channel : Stdlib.in_channel -> t
   val table_of_contents : ?start:int list -> ?depth:int -> t -> t
